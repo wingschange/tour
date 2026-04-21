@@ -24,7 +24,7 @@ const error = ref(null)
 
 onMounted(async () => {
   try {
-    const response = await axios.get('http://localhost:8080/posts')
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/posts`)
     posts.value = response.data
   } catch (err) {
     error.value = 'Failed to load posts: ' + (err.message || 'Unknown error')

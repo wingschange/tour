@@ -27,6 +27,18 @@ import javax.servlet.http.HttpServletResponse;
 import java.util.Arrays;
 import java.util.Collections;
 
+/**
+ * Security configuration for the Travel App REST API.
+ *
+ * <p><strong>CSRF protection is intentionally disabled.</strong>
+ * This API is stateless: authentication is performed exclusively via JWT Bearer tokens
+ * sent in the {@code Authorization} header — no cookies or browser sessions are used.
+ * CSRF attacks exploit the browser's automatic cookie submission, so they do not apply
+ * to a token-in-header scheme. If the application ever introduces cookie-based sessions,
+ * CSRF protection must be re-enabled.
+ * See: https://docs.spring.io/spring-security/reference/features/exploits/csrf.html#csrf-when
+ * </p>
+ */
 @Configuration
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true)
@@ -57,8 +69,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
-            // CSRF is intentionally disabled: this API uses stateless JWT tokens (no cookies),
-            // so CSRF attacks are not applicable. Re-enable if cookie-based sessions are ever used.
             .csrf().disable()
             .cors().configurationSource(corsConfigurationSource())
             .and()

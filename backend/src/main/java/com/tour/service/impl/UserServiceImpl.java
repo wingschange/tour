@@ -63,13 +63,14 @@ public class UserServiceImpl implements UserService {
         userMapper.insert(user);
 
         Role role = roleMapper.selectOne(new LambdaQueryWrapper<Role>().eq(Role::getName, "ROLE_USER"));
-        if (role != null) {
-            UserRole userRole = UserRole.builder()
-                    .userId(user.getId())
-                    .roleId(role.getId())
-                    .build();
-            userRoleMapper.insert(userRole);
+        if (role == null) {
+            throw new IllegalStateException("Default role ROLE_USER not found. Please run the database schema to seed roles.");
         }
+        UserRole userRole = UserRole.builder()
+                .userId(user.getId())
+                .roleId(role.getId())
+                .build();
+        userRoleMapper.insert(userRole);
     }
 
     @Override
