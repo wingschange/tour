@@ -11,7 +11,10 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.HashMap;
 import java.util.Map;
 
-@Tag(name = "File", description = "File upload endpoints")
+/**
+ * 文件上传控制器 —— 本地文件存储，后续可扩展为 OSS
+ */
+@Tag(name = "文件上传", description = "图片/视频等文件上传接口")
 @RestController
 @RequestMapping("/files")
 @CrossOrigin
@@ -20,7 +23,8 @@ public class FileController {
     @Autowired
     private StorageService storageService;
 
-    @Operation(summary = "Upload a file")
+    /** 上传文件（需要登录），返回文件名和访问 URL */
+    @Operation(summary = "上传文件", description = "上传图片或视频，返回文件名（filename）及访问地址（url）")
     @PostMapping("/upload")
     public R<Map<String, String>> uploadFile(@RequestParam("file") MultipartFile file) {
         String filename = storageService.store(file);
