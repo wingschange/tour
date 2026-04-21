@@ -1,0 +1,1821 @@
+openapi: 3.0.3
+info:
+  title: Tour - Travel Experience Sharing API
+  description: |
+    Tour 是一款旅行体验分享应用，允许用户发布旅行照片、撰写游记，并探索他人分享的旅途故事。
+
+    ## 认证方式
+    本 API 使用 **Bearer Token**（JWT）进行认证。在需要认证的接口中，请在请求头中携带：
+    ```
+    Authorization: Bearer <your_access_token>
+    ```
+
+    ## 错误码说明
+    | HTTP 状态码 | 含义 |
+    |---|---|
+    | 200 | 请求成功 |
+    | 201 | 创建成功 |
+    | 400 | 请求参数错误 |
+    | 401 | 未认证或 Token 已过期 |
+    | 403 | 无权限访问 |
+    | 404 | 资源不存在 |
+    | 409 | 资源冲突（如用户名已存在） |
+    | 422 | 请求体校验失败 |
+    | 500 | 服务器内部错误 |
+  version: 1.0.0
+  contact:
+    name: Tour API Support
+    email: support@tour-app.com
+  license:
+    name: MIT
+
+servers:
+  - url: https://api.tour-app.com/v1
+    description: 生产环境
+  - url: https://staging-api.tour-app.com/v1
+    description: 预发布环境
+  - url: http://localhost:8080/v1
+    description: 本地开发环境
+
+tags:
+  - name: Auth
+    description: 用户注册、登录与 Token 管理
+  - name: Users
+    description: 用户信息与关注关系管理
+  - name: Posts
+    description: 旅行游记的发布与管理
+  - name: Photos
+    description: 旅行照片的上传与管理
+  - name: Comments
+    description: 游记评论管理
+  - name: Likes
+    description: 游记点赞管理
+  - name: Tags
+    description: 标签浏览与管理
+  - name: Destinations
+    description: 目的地浏览与查询
+  - name: Search
+    description: 全局搜索
+
+# ─────────────────────────────────────────────
+# Paths
+# ─────────────────────────────────────────────
+paths:
+
+  # ── Auth ─────────────────────────────────────
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: 用户注册
+      description: 创建新用户账号，注册成功后返回访问令牌。
+      operationId: authRegister
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              username: traveler_zhang
+              email: zhang@example.com
+              password: P@ssw0rd123
+      responses:
+        '201':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: 用户登录
+      description: 使用邮箱和密码登录，返回访问令牌与刷新令牌。
+      operationId: authLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: zhang@example.com
+              password: P@ssw0rd123
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: 用户登出
+      description: 使当前访问令牌与刷新令牌失效。
+      operationId: authLogout
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 登出成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: 刷新访问令牌
+      description: 使用刷新令牌换取新的访问令牌。
+      operationId: authRefresh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: 刷新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: 忘记密码（发送重置邮件）
+      description: 向注册邮箱发送密码重置链接。
+      operationId: authForgotPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: 重置邮件已发送
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: 重置密码
+      description: 使用重置令牌设置新密码。
+      operationId: authResetPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: 密码重置成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ── Users ─────────────────────────────────────
+  /users/me:
+    get:
+      tags: [Users]
+      summary: 获取当前登录用户信息
+      operationId: getCurrentUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    put:
+      tags: [Users]
+      summary: 更新当前登录用户信息
+      operationId: updateCurrentUser
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /users/me/avatar:
+    post:
+      tags: [Users]
+      summary: 上传头像
+      description: 上传用户头像图片，支持 JPEG / PNG / WebP，最大 5 MB。
+      operationId: uploadAvatar
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 头像图片文件
+      responses:
+        '200':
+          description: 上传成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  avatarUrl:
+                    type: string
+                    format: uri
+                    example: https://cdn.tour-app.com/avatars/user_123.jpg
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/me/password:
+    put:
+      tags: [Users]
+      summary: 修改密码
+      operationId: changePassword
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: 密码修改成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/{userId}:
+    get:
+      tags: [Users]
+      summary: 获取指定用户公开信息
+      operationId: getUserById
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPublicProfile'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /users/{userId}/followers:
+    get:
+      tags: [Users]
+      summary: 获取用户粉丝列表
+      operationId: getUserFollowers
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /users/{userId}/following:
+    get:
+      tags: [Users]
+      summary: 获取用户关注列表
+      operationId: getUserFollowing
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /users/{userId}/follow:
+    post:
+      tags: [Users]
+      summary: 关注用户
+      operationId: followUser
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: 关注成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: 不能关注自己
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: 已关注该用户
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags: [Users]
+      summary: 取消关注用户
+      operationId: unfollowUser
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: 取消关注成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Posts ─────────────────────────────────────
+  /posts:
+    get:
+      tags: [Posts]
+      summary: 获取游记列表（发现页 / Feed）
+      description: |
+        返回游记列表，支持多种排序方式：
+        - `latest`：按发布时间倒序（默认）
+        - `popular`：按点赞数倒序
+        - `following`：仅显示已关注用户的游记（需登录）
+      operationId: listPosts
+      security:
+        - {}
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [latest, popular, following]
+            default: latest
+        - name: tag
+          in: query
+          description: 按标签过滤
+          schema:
+            type: string
+        - name: destination
+          in: query
+          description: 按目的地过滤（目的地 ID）
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostListResponse'
+
+    post:
+      tags: [Posts]
+      summary: 发布新游记
+      operationId: createPost
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePostRequest'
+            example:
+              title: 三亚五日游——阳光与沙滩
+              content: 这是我第一次来三亚，海水蔚蓝，沙滩细腻...
+              coverPhotoId: photo_abc123
+              photoIds:
+                - photo_abc123
+                - photo_def456
+              destinationId: dest_sanya
+              tags: [海滩, 三亚, 休闲]
+              isPublic: true
+      responses:
+        '201':
+          description: 发布成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /posts/{postId}:
+    get:
+      tags: [Posts]
+      summary: 获取游记详情
+      operationId: getPost
+      parameters:
+        - $ref: '#/components/parameters/postId'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Posts]
+      summary: 更新游记
+      description: 仅游记作者可修改。
+      operationId: updatePost
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/postId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePostRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Posts]
+      summary: 删除游记
+      description: 仅游记作者或管理员可删除。
+      operationId: deletePost
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/postId'
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /users/{userId}/posts:
+    get:
+      tags: [Posts]
+      summary: 获取指定用户发布的游记列表
+      operationId: getUserPosts
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /users/me/bookmarks:
+    get:
+      tags: [Posts]
+      summary: 获取当前用户收藏的游记列表
+      operationId: getBookmarks
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /posts/{postId}/bookmark:
+    post:
+      tags: [Posts]
+      summary: 收藏游记
+      operationId: bookmarkPost
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/postId'
+      responses:
+        '200':
+          description: 收藏成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: 已收藏
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags: [Posts]
+      summary: 取消收藏游记
+      operationId: unbookmarkPost
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/postId'
+      responses:
+        '200':
+          description: 取消收藏成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Photos ────────────────────────────────────
+  /photos:
+    post:
+      tags: [Photos]
+      summary: 上传照片
+      description: |
+        上传旅行照片。支持批量上传，每次最多 10 张，单张最大 20 MB。
+        支持格式：JPEG、PNG、WebP、HEIC。
+        上传成功后返回照片 ID，可在发布游记时引用。
+      operationId: uploadPhotos
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  maxItems: 10
+                  description: 照片文件（最多 10 张）
+      responses:
+        '201':
+          description: 上传成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  photos:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Photo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /photos/{photoId}:
+    get:
+      tags: [Photos]
+      summary: 获取照片详情
+      operationId: getPhoto
+      parameters:
+        - $ref: '#/components/parameters/photoId'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Photo'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Photos]
+      summary: 删除照片
+      description: 仅照片所有者或管理员可删除。
+      operationId: deletePhoto
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/photoId'
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Comments ──────────────────────────────────
+  /posts/{postId}/comments:
+    get:
+      tags: [Comments]
+      summary: 获取游记评论列表
+      description: 返回顶层评论，每条评论包含最多 3 条热门子评论。
+      operationId: listComments
+      parameters:
+        - $ref: '#/components/parameters/postId'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      tags: [Comments]
+      summary: 发表评论
+      operationId: createComment
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/postId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCommentRequest'
+            example:
+              content: 写得太好了！让我也想去三亚了。
+              parentId: null
+      responses:
+        '201':
+          description: 评论成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /comments/{commentId}/replies:
+    get:
+      tags: [Comments]
+      summary: 获取评论的子回复列表
+      operationId: listReplies
+      parameters:
+        - $ref: '#/components/parameters/commentId'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /comments/{commentId}:
+    delete:
+      tags: [Comments]
+      summary: 删除评论
+      description: 仅评论作者或管理员可删除。删除后其所有子回复也将被删除。
+      operationId: deleteComment
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/commentId'
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Likes ─────────────────────────────────────
+  /posts/{postId}/like:
+    post:
+      tags: [Likes]
+      summary: 点赞游记
+      operationId: likePost
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/postId'
+      responses:
+        '200':
+          description: 点赞成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  likesCount:
+                    type: integer
+                    example: 128
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: 已点赞
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags: [Likes]
+      summary: 取消点赞游记
+      operationId: unlikePost
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/postId'
+      responses:
+        '200':
+          description: 取消点赞成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  likesCount:
+                    type: integer
+                    example: 127
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /comments/{commentId}/like:
+    post:
+      tags: [Likes]
+      summary: 点赞评论
+      operationId: likeComment
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/commentId'
+      responses:
+        '200':
+          description: 点赞成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  likesCount:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: 已点赞
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags: [Likes]
+      summary: 取消点赞评论
+      operationId: unlikeComment
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/commentId'
+      responses:
+        '200':
+          description: 取消点赞成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  likesCount:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Tags ──────────────────────────────────────
+  /tags:
+    get:
+      tags: [Tags]
+      summary: 获取热门标签列表
+      operationId: listTags
+      parameters:
+        - name: limit
+          in: query
+          description: 返回数量，默认 20，最大 100
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tags:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tag'
+
+  /tags/{tagName}/posts:
+    get:
+      tags: [Tags]
+      summary: 获取指定标签下的游记列表
+      operationId: getPostsByTag
+      parameters:
+        - name: tagName
+          in: path
+          required: true
+          description: 标签名称
+          schema:
+            type: string
+            example: 海滩
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [latest, popular]
+            default: latest
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Destinations ──────────────────────────────
+  /destinations:
+    get:
+      tags: [Destinations]
+      summary: 获取目的地列表
+      operationId: listDestinations
+      parameters:
+        - name: keyword
+          in: query
+          description: 关键词搜索（城市、景点名称等）
+          schema:
+            type: string
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Destination'
+
+  /destinations/{destinationId}:
+    get:
+      tags: [Destinations]
+      summary: 获取目的地详情
+      operationId: getDestination
+      parameters:
+        - $ref: '#/components/parameters/destinationId'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DestinationDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /destinations/{destinationId}/posts:
+    get:
+      tags: [Destinations]
+      summary: 获取目的地相关游记列表
+      operationId: getPostsByDestination
+      parameters:
+        - $ref: '#/components/parameters/destinationId'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [latest, popular]
+            default: latest
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Search ────────────────────────────────────
+  /search:
+    get:
+      tags: [Search]
+      summary: 全局搜索
+      description: |
+        按关键词同时搜索游记、用户和目的地，返回各类型的 Top 结果。
+        如需分类搜索，请使用 `type` 参数。
+      operationId: globalSearch
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: 搜索关键词
+          schema:
+            type: string
+            minLength: 1
+            example: 三亚
+        - name: type
+          in: query
+          description: 搜索类型，不填则返回所有类型
+          schema:
+            type: string
+            enum: [posts, users, destinations]
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+# ─────────────────────────────────────────────
+# Components
+# ─────────────────────────────────────────────
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: '格式：`Bearer <JWT access_token>`'
+
+  # ── Parameters ────────────────────────────────
+  parameters:
+    userId:
+      name: userId
+      in: path
+      required: true
+      description: 用户 ID
+      schema:
+        type: string
+        example: user_123abc
+
+    postId:
+      name: postId
+      in: path
+      required: true
+      description: 游记 ID
+      schema:
+        type: string
+        example: post_xyz789
+
+    photoId:
+      name: photoId
+      in: path
+      required: true
+      description: 照片 ID
+      schema:
+        type: string
+        example: photo_abc123
+
+    commentId:
+      name: commentId
+      in: path
+      required: true
+      description: 评论 ID
+      schema:
+        type: string
+        example: comment_def456
+
+    destinationId:
+      name: destinationId
+      in: path
+      required: true
+      description: 目的地 ID
+      schema:
+        type: string
+        example: dest_sanya
+
+    page:
+      name: page
+      in: query
+      description: 页码，从 1 开始
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+
+    pageSize:
+      name: pageSize
+      in: query
+      description: 每页条数，默认 20，最大 100
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+
+  # ── Responses ─────────────────────────────────
+  responses:
+    BadRequest:
+      description: 请求参数错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: BAD_REQUEST
+            message: 请求参数无效
+
+    Unauthorized:
+      description: 未认证或 Token 已过期
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: UNAUTHORIZED
+            message: 访问令牌无效或已过期
+
+    Forbidden:
+      description: 无操作权限
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: FORBIDDEN
+            message: 您没有权限执行此操作
+
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: NOT_FOUND
+            message: 请求的资源不存在
+
+    Conflict:
+      description: 资源冲突
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: CONFLICT
+            message: 该邮箱已被注册
+
+    UnprocessableEntity:
+      description: 请求体校验失败
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+
+  # ── Schemas ───────────────────────────────────
+  schemas:
+
+    # Auth
+    RegisterRequest:
+      type: object
+      required: [username, email, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+          pattern: '^[a-zA-Z0-9_]+$'
+          description: 用户名，仅允许字母、数字和下划线
+          example: traveler_zhang
+        email:
+          type: string
+          format: email
+          example: zhang@example.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          description: 密码，至少 8 位，须包含字母和数字
+          example: P@ssw0rd123
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: zhang@example.com
+        password:
+          type: string
+          format: password
+          example: P@ssw0rd123
+
+    RefreshTokenRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+          description: 登录时下发的刷新令牌
+
+    ResetPasswordRequest:
+      type: object
+      required: [token, newPassword]
+      properties:
+        token:
+          type: string
+          description: 邮件中的重置令牌
+        newPassword:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          format: password
+        newPassword:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+
+    TokenPair:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT 访问令牌，有效期 2 小时
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        refreshToken:
+          type: string
+          description: 刷新令牌，有效期 30 天
+          example: dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...
+        expiresIn:
+          type: integer
+          description: accessToken 剩余有效秒数
+          example: 7200
+
+    AuthResponse:
+      allOf:
+        - $ref: '#/components/schemas/TokenPair'
+        - type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/UserProfile'
+
+    # Users
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          example: user_123abc
+        username:
+          type: string
+          example: traveler_zhang
+        email:
+          type: string
+          format: email
+          example: zhang@example.com
+        bio:
+          type: string
+          nullable: true
+          example: 热爱旅行，走遍天涯海角。
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+          example: https://cdn.tour-app.com/avatars/user_123.jpg
+        followersCount:
+          type: integer
+          example: 320
+        followingCount:
+          type: integer
+          example: 180
+        postsCount:
+          type: integer
+          example: 45
+        createdAt:
+          type: string
+          format: date-time
+          example: '2024-03-15T08:30:00Z'
+
+    UserPublicProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          example: user_123abc
+        username:
+          type: string
+          example: traveler_zhang
+        bio:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+        followersCount:
+          type: integer
+        followingCount:
+          type: integer
+        postsCount:
+          type: integer
+        isFollowing:
+          type: boolean
+          description: 当前登录用户是否已关注该用户（未登录时为 false）
+          example: false
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+          pattern: '^[a-zA-Z0-9_]+$'
+        bio:
+          type: string
+          maxLength: 200
+          nullable: true
+
+    UserListResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 320
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 20
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserPublicProfile'
+
+    # Posts
+    Post:
+      type: object
+      properties:
+        id:
+          type: string
+          example: post_xyz789
+        title:
+          type: string
+          example: 三亚五日游——阳光与沙滩
+        summary:
+          type: string
+          description: 正文前 100 字摘要
+          example: 这是我第一次来三亚，海水蔚蓝，沙滩细腻...
+        coverPhotoUrl:
+          type: string
+          format: uri
+          nullable: true
+          example: https://cdn.tour-app.com/photos/photo_abc123_cover.jpg
+        author:
+          $ref: '#/components/schemas/UserPublicProfile'
+        destination:
+          $ref: '#/components/schemas/Destination'
+          nullable: true
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+        likesCount:
+          type: integer
+          example: 128
+        commentsCount:
+          type: integer
+          example: 34
+        bookmarksCount:
+          type: integer
+          example: 56
+        isLiked:
+          type: boolean
+          description: 当前登录用户是否已点赞（未登录时为 false）
+          example: false
+        isBookmarked:
+          type: boolean
+          description: 当前登录用户是否已收藏（未登录时为 false）
+          example: false
+        isPublic:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: '2024-06-20T14:00:00Z'
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2024-06-21T09:15:00Z'
+
+    PostDetail:
+      allOf:
+        - $ref: '#/components/schemas/Post'
+        - type: object
+          properties:
+            content:
+              type: string
+              description: 游记正文（Markdown 格式）
+              example: "## 第一天\n抵达三亚，入住酒店..."
+            photos:
+              type: array
+              items:
+                $ref: '#/components/schemas/Photo'
+
+    CreatePostRequest:
+      type: object
+      required: [title, content]
+      properties:
+        title:
+          type: string
+          minLength: 2
+          maxLength: 100
+        content:
+          type: string
+          minLength: 10
+          maxLength: 50000
+          description: 游记正文，支持 Markdown
+        coverPhotoId:
+          type: string
+          nullable: true
+          description: 封面照片 ID（须已上传）
+        photoIds:
+          type: array
+          items:
+            type: string
+          maxItems: 50
+          description: 游记中引用的照片 ID 列表
+        destinationId:
+          type: string
+          nullable: true
+          description: 目的地 ID
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+          description: 标签列表，不存在的标签将自动创建
+        isPublic:
+          type: boolean
+          default: true
+          description: 是否公开发布
+
+    UpdatePostRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 2
+          maxLength: 100
+        content:
+          type: string
+          minLength: 10
+          maxLength: 50000
+        coverPhotoId:
+          type: string
+          nullable: true
+        photoIds:
+          type: array
+          items:
+            type: string
+          maxItems: 50
+        destinationId:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+        isPublic:
+          type: boolean
+
+    PostListResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 1024
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 20
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Post'
+
+    # Photos
+    Photo:
+      type: object
+      properties:
+        id:
+          type: string
+          example: photo_abc123
+        url:
+          type: string
+          format: uri
+          example: https://cdn.tour-app.com/photos/photo_abc123.jpg
+        thumbnailUrl:
+          type: string
+          format: uri
+          example: https://cdn.tour-app.com/photos/photo_abc123_thumb.jpg
+        width:
+          type: integer
+          example: 3024
+        height:
+          type: integer
+          example: 4032
+        sizeBytes:
+          type: integer
+          description: 文件大小（字节）
+          example: 2457600
+        uploadedAt:
+          type: string
+          format: date-time
+          example: '2024-06-20T13:45:00Z'
+
+    # Comments
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+          example: comment_def456
+        content:
+          type: string
+          example: 写得太好了！让我也想去三亚了。
+        author:
+          $ref: '#/components/schemas/UserPublicProfile'
+        parentId:
+          type: string
+          nullable: true
+          description: 父评论 ID，顶层评论时为 null
+        replyToUser:
+          $ref: '#/components/schemas/UserPublicProfile'
+          nullable: true
+          description: 回复目标用户（仅子回复时有值）
+        likesCount:
+          type: integer
+          example: 12
+        isLiked:
+          type: boolean
+          example: false
+        repliesCount:
+          type: integer
+          description: 子回复数量
+          example: 3
+        replies:
+          type: array
+          description: 热门子回复（最多 3 条）
+          items:
+            $ref: '#/components/schemas/Comment'
+        createdAt:
+          type: string
+          format: date-time
+          example: '2024-06-22T10:00:00Z'
+
+    CreateCommentRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 500
+        parentId:
+          type: string
+          nullable: true
+          description: 回复某条评论时传入父评论 ID
+
+    CommentListResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 34
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 20
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+
+    # Tags
+    Tag:
+      type: object
+      properties:
+        name:
+          type: string
+          example: 海滩
+        postsCount:
+          type: integer
+          example: 2048
+
+    # Destinations
+    Destination:
+      type: object
+      properties:
+        id:
+          type: string
+          example: dest_sanya
+        name:
+          type: string
+          example: 三亚
+        country:
+          type: string
+          example: 中国
+        coverPhotoUrl:
+          type: string
+          format: uri
+          nullable: true
+          example: https://cdn.tour-app.com/destinations/dest_sanya_cover.jpg
+        postsCount:
+          type: integer
+          example: 5120
+
+    DestinationDetail:
+      allOf:
+        - $ref: '#/components/schemas/Destination'
+        - type: object
+          properties:
+            description:
+              type: string
+              example: 三亚，海南省地级市，素有"东方夏威夷"之称...
+            latitude:
+              type: number
+              format: float
+              example: 18.2528
+            longitude:
+              type: number
+              format: float
+              example: 109.5119
+            popularTags:
+              type: array
+              items:
+                $ref: '#/components/schemas/Tag'
+
+    # Search
+    SearchResponse:
+      type: object
+      properties:
+        query:
+          type: string
+          example: 三亚
+        posts:
+          type: object
+          properties:
+            total:
+              type: integer
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Post'
+        users:
+          type: object
+          properties:
+            total:
+              type: integer
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/UserPublicProfile'
+        destinations:
+          type: object
+          properties:
+            total:
+              type: integer
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Destination'
+
+    # Common
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: 操作成功
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          description: 业务错误码
+          example: NOT_FOUND
+        message:
+          type: string
+          description: 错误描述
+          example: 请求的资源不存在
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          example: 请求参数校验失败
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: email
+              message:
+                type: string
+                example: 必须是有效的邮箱地址
