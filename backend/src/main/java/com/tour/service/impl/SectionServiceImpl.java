@@ -9,6 +9,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 板块服务实现类
+ *
+ * <p>提供旅游板块的查询、创建、修改、删除能力。</p>
+ */
 @Service
 public class SectionServiceImpl implements SectionService {
 
@@ -24,7 +29,7 @@ public class SectionServiceImpl implements SectionService {
     public Section getSection(Long sectionId) {
         Section section = sectionMapper.selectById(sectionId);
         if (section == null) {
-            throw new IllegalArgumentException("Section not found");
+            throw new IllegalArgumentException("板块不存在");
         }
         return section;
     }
@@ -42,7 +47,7 @@ public class SectionServiceImpl implements SectionService {
     public Section updateSection(Long sectionId, Section updated) {
         Section existing = sectionMapper.selectById(sectionId);
         if (existing == null) {
-            throw new IllegalArgumentException("Section not found");
+            throw new IllegalArgumentException("板块不存在");
         }
         if (updated.getName() != null) existing.setName(updated.getName());
         if (updated.getProvince() != null) existing.setProvince(updated.getProvince());
@@ -57,7 +62,7 @@ public class SectionServiceImpl implements SectionService {
     public void deleteSection(Long sectionId) {
         Section section = sectionMapper.selectById(sectionId);
         if (section == null) {
-            throw new IllegalArgumentException("Section not found");
+            throw new IllegalArgumentException("板块不存在");
         }
         sectionMapper.deleteById(sectionId);
     }

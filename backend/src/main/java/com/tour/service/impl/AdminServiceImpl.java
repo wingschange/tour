@@ -15,6 +15,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 管理员服务实现类
+ *
+ * <p>提供用户管理、帖子管理、板块管理等后台能力。</p>
+ */
 @Service
 public class AdminServiceImpl implements AdminService {
 
@@ -45,6 +50,7 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public void deleteUser(Long userId) {
+        // 逻辑删除用户，并清除其角色关联
         userMapper.deleteById(userId);
         userRoleMapper.delete(new LambdaQueryWrapper<UserRole>().eq(UserRole::getUserId, userId));
     }
@@ -54,12 +60,13 @@ public class AdminServiceImpl implements AdminService {
     public void updateUserRole(Long userId, String roleName) {
         User user = userMapper.selectById(userId);
         if (user == null) {
-            throw new IllegalArgumentException("User not found");
+            throw new IllegalArgumentException("用户不存在");
         }
         Role role = roleMapper.selectOne(new LambdaQueryWrapper<Role>().eq(Role::getName, roleName));
         if (role == null) {
-            throw new IllegalArgumentException("Role not found: " + roleName);
+            throw new IllegalArgumentException("角色不存在: " + roleName);
         }
+        // 先删除原有角色，再分配新角色
         userRoleMapper.delete(new LambdaQueryWrapper<UserRole>().eq(UserRole::getUserId, userId));
         UserRole userRole = UserRole.builder().userId(userId).roleId(role.getId()).build();
         userRoleMapper.insert(userRole);
@@ -82,6 +89,12 @@ public class AdminServiceImpl implements AdminService {
         return sectionMapper.selectPage(new Page<>(page, size), null);
     }
 
+    /**
+     * 将 User 实体转换为对外展示的用户视图对象
+     *
+     * @param user 用户实体
+     * @return 用户视图对象（含角色、粉丝/关注数量）
+     */
     private UserVo buildUserVo(User user) {
         UserVo vo = new UserVo();
         vo.setId(user.getId());

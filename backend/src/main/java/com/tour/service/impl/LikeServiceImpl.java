@@ -10,6 +10,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 点赞服务实现类
+ *
+ * <p>提供帖子点赞/取消点赞能力，并同步更新帖子点赞计数。</p>
+ */
 @Service
 public class LikeServiceImpl implements LikeService {
 
@@ -32,6 +37,7 @@ public class LikeServiceImpl implements LikeService {
         Like like = Like.builder().userId(userId).postId(postId).build();
         likeMapper.insert(like);
 
+        // 帖子点赞计数 +1
         Post post = postMapper.selectById(postId);
         if (post != null) {
             post.setLikeCount(post.getLikeCount() == null ? 1 : post.getLikeCount() + 1);
@@ -46,6 +52,7 @@ public class LikeServiceImpl implements LikeService {
                 .eq(Like::getUserId, userId)
                 .eq(Like::getPostId, postId));
         if (deleted > 0) {
+            // 帖子点赞计数 -1
             Post post = postMapper.selectById(postId);
             if (post != null && post.getLikeCount() != null && post.getLikeCount() > 0) {
                 post.setLikeCount(post.getLikeCount() - 1);

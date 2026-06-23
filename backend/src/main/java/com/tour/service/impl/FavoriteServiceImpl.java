@@ -17,6 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 收藏服务实现类
+ *
+ * <p>提供帖子收藏/取消收藏能力，并同步更新帖子收藏计数。</p>
+ */
 @Service
 public class FavoriteServiceImpl implements FavoriteService {
 
@@ -42,6 +47,7 @@ public class FavoriteServiceImpl implements FavoriteService {
         Favorite favorite = Favorite.builder().userId(userId).postId(postId).build();
         favoriteMapper.insert(favorite);
 
+        // 帖子收藏计数 +1
         Post post = postMapper.selectById(postId);
         if (post != null) {
             post.setFavoriteCount(post.getFavoriteCount() == null ? 1 : post.getFavoriteCount() + 1);
@@ -56,6 +62,7 @@ public class FavoriteServiceImpl implements FavoriteService {
                 .eq(Favorite::getUserId, userId)
                 .eq(Favorite::getPostId, postId));
         if (deleted > 0) {
+            // 帖子收藏计数 -1
             Post post = postMapper.selectById(postId);
             if (post != null && post.getFavoriteCount() != null && post.getFavoriteCount() > 0) {
                 post.setFavoriteCount(post.getFavoriteCount() - 1);
